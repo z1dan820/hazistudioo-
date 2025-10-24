@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hazi Studio - Katalog Jersey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+
+    <header class="bg-white shadow-md">
+        <nav class="container mx-auto px-6 py-4">
+            <h1 class="text-3xl font-bold text-gray-900">Hazi Studio</h1>
+            <p class="text-gray-600">Katalog Jersey Premium</p>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-6 py-8">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6">Produk Kami</h2>
+
+        <div id="loading-spinner" class="text-center">
+            <p class="text-lg text-gray-600">Memuat katalog...</p>
+        </div>
+        
+        <div id="catalog-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            </div>
+
+    </main>
+
+    <footer class="bg-gray-800 text-white p-6 mt-12">
+        <div class="container mx-auto text-center">
+            &copy; 2025 Hazi Studio. Semua Hak Dilindungi.
+        </div>
+    </footer>
+
+
+    <script>
+        // Ambil elemen HTML yang kita perlukan
+        const catalogContainer = document.getElementById('catalog-container');
+        const loadingSpinner = document.getElementById('loading-spinner');
+
+        // ==================================================================
+        // !! PENTING !!
+        // GANTI URL DI BAWAH INI DENGAN LINK .CSV DARI GOOGLE SHEET ANDA
+        // ==================================================================
+        const GOOGLE_SHEET_URL = 'PASTE_URL_ANDA_DI_SINI';
+
+
+        // Fungsi untuk mengubah angka menjadi format Rupiah
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(angka);
+        }
+
+        // Fungsi untuk mengambil dan menampilkan data
+        async function loadCatalog() {
+            try {
+                // Tambahkan parameter acak untuk mencegah masalah cache Google Sheet
+                const response = await fetch(GOOGLE_SHEET_URL + `&t=${new Date().getTime()}`);
+                if (!response.ok) {
+                    throw new Error('Gagal mengambil data dari Google Sheet.');
+                }
+
+                const csvText = await response.text();
+                
+                // Pisahkan teks CSV menjadi baris-baris
+                const rows = csvText.split('\n');
+                
+                // Hapus baris header (nama, harga, gambar, dll.)
+                const dataRows = rows.slice(1);
+
+                // Hapus spinner loading
+                loadingSpinner.style.display = 'none';
+
+                // Jika tidak ada data
+                if (dataRows.length === 0 || (dataRows.length === 1 && dataRows[0] === '')) {
+                    catalogContainer.innerHTML = '<p class="text-gray-600">Belum ada produk.</p>';
+                    return;
+                }
+
+                // Loop melalui setiap baris data
+                dataRows.forEach(row => {
+                    // Pisahkan setiap baris menjadi kolom-kolom
+                    const cols = row.split(',');
+
+                    // Pastikan data ada (menghindari baris kosong di akhir)
+                    if (cols.length >= 5) {
+                        const jersey = {
+                            nama: cols[0].trim(),
+                            harga: cols[1].trim(),
+                            gambar: cols[2].trim(),
+                            status: cols[3].trim(),
+                            deskripsi: cols[4].trim()
+                        };
+
+                        // Buat kartu HTML untuk setiap produk
+                        const card = `
+                            <div class="bg-white rounded-lg shadow-lg overflow-hidden flex flex-col">
+                                <img src="${jersey.gambar}" alt="${jersey.nama}" class="w-full h-64 object-cover">
+                                
+                                <div class="p-4 flex flex-col flex-grow">
+                                    <h3 class="text-xl font-bold text-gray-900 mb-2">${jersey.nama}</h3>
+                                    <p class="text-gray-700 text-lg font-semibold mb-2">${formatRupiah(jersey.harga)}</p>
+                                    
+                                    ${
+                                        jersey.status.toLowerCase() === 'tersedia'
+                                        ? `<span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-green-600 bg-green-200 last-mr-1 mb-2">${jersey.status}</span>`
+                                        : `<span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-red-600 bg-red-200 last-mr-1 mb-2">${jersey.status}</span>`
+                                    }
+                                    
+                                    <p class="text-gray-600 text-sm mt-auto">${jersey.deskripsi}</p>
+                                </div>
+                            </div>
+                        `;
+
+                        // Masukkan kartu HTML ke dalam container
+                        catalogContainer.innerHTML += card;
+                    }
+                });
+
+            } catch (error) {
+                console.error('Error:', error);
+                loadingSpinner.style.display = 'none';
+                catalogContainer.innerHTML = '<p class="text-red-500">Maaf, terjadi kesalahan saat memuat katalog. Coba muat ulang halaman.</p>';
+            }
+        }
+
+        // Jalankan fungsi loadCatalog() saat halaman selesai dimuat
+        document.addEventListener('DOMContentLoaded', loadCatalog);
+    </script>
+
+</body>
+</html>
